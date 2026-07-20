@@ -15,5 +15,6 @@
     "--background-index",
     "--query-driver=**",
     "--compile-commands-dir=/home/sarang/variometer/Variometer/build"
-  ]
+  ],
+  "C_Cpp.default.compilerPath": "/home/sarang/.espressif/tools/esp-clang/esp-20.1.1_20250829/esp-clang/bin/clang"
 }
