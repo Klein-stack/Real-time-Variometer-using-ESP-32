@@ -1,6 +1,61 @@
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
-#include "driver/gpio.h"
 #include "freertos/task.h"
-#include <esp_system.h>
-#include <string.h>
+#include "driver/i2c_master.h"
+#include "esp_err.h"
+
+static const *TAG = "MPU6050";
+
+#define TEST_I2C_PORT I2C_NUM_0
+#define I2C_MASTER_SCL_IO GPIO_NUM_6
+#define I2C_MASTER_SDA_IO GPIO_NUM_11
+#define MPU6050_ADDRESS 0x68 //This is the address of MPU6050 when AD0 pin of it is connected to ground
+#define PWR_MGMT_REG 0x6B //This is the address of the register whose bit 6 have to be turned 0 for turning on mpu6050
+#define ACCEL_XOUT_REG 0x3B
+
+
+
+void mpu6050_init(){
+    i2c_master_bus_config_t i2c_mst_config = {
+        .clk_source = I2C_CLK_SRC_DEFAULT,
+        .i2c_port = TEST_I2C_PORT,
+        .scl_io_num = I2C_MASTER_SCL_IO,
+        .sda_io_num = I2C_MASTER_SDA_IO,
+        .glitch_ignore_cnt = 7,
+        .flags.enable_internal_pullup = true,
+    };
+
+    i2c_master_bus_handle_t bus_handle;
+    ESP_ERROR_CHECK(i2c_new_master_bus(&i2c_mst_config, &bus_handle));
+
+    i2c_device_config_t dev_cfg = {
+        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
+        .device_address = MPU6050_ADDRESS,
+        .scl_speed_hz = 100000,
+    };
+
+    i2c_master_dev_handle_t dev_handle;
+    ESP_ERROR_CHECK(i2c_master_bus_add_device(bus_handle, &dev_cfg, &dev_handle));
+
+    uint8_t wake_up_cmd[2] = {PWR_MGMT_REG, 0x00};
+    ESP_ERROR_CHECK(i2c_master_transmit(dev_handle, wake_up_cmd, sizeof(wake_up_cmd), 1000));
+
+}
+
+void mpu_read_data(){
+
+    uint8_t data_reg_addr = ACCEL_XOUT_REG;
+    uint8_t data[6];  //because mpu6050 produces data in big endian format -- MSB first
+
+    ESP_ERROR_CHECK(i2c_master_transmit_receive(dev_handle, data_reg_addr,1 , data, 6, 1000));
+    
+
+}
+
+
+
+
+
+
+
+
