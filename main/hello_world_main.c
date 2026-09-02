@@ -13,6 +13,8 @@ static const char *TAG = "MPU6050";
 #define MPU6050_ADDRESS 0x68 //This is the address of MPU6050 when AD0 pin of it is connected to ground
 #define PWR_MGMT_REG 0x6B //This is the address of the register whose bit 6 have to be turned 0 for turning on mpu6050
 #define ACCEL_XOUT_REG 0x3B
+#define ACCEL_SENSIT_PER_LSB 16384
+#define ACCEL_DUE_TO_GRAVITY 9.80665
 
 static i2c_master_dev_handle_t dev_handle; 
 
@@ -42,7 +44,7 @@ void mpu6050_init(){
 
 }
 
-void mpu_read_data(){
+double mpu_read_data(){
 
     uint8_t data_reg_addr = ACCEL_XOUT_REG;
     uint8_t data[6];
@@ -53,6 +55,22 @@ void mpu_read_data(){
     int16_t accel_y = (int16_t)((data[2] << 8) | (data[3]));
     int16_t accel_z = (int16_t)((data[4] << 8) | (data[5]));
 
-    ESP_LOGI(TAG, "Accel X=%d Y=%d Z=%d", accel_x, accel_y, accel_z);
+    float accel_z_in_g = accel_z/ACCEL_SENSIT_PER_LSB;
+    float accel_z_in_ms2 = accel_z_in_g * ACCEL_DUE_TO_GRAVITY;
+    
+    return accel_z_in_ms2;
+}
+
+void calibrate_mpu(uint8_t num_of_samples){
+    ESP_LOGI(TAG, "Calibraitng the acceleratomer... Place the accelerometer level.");
+    float sum = 0.0;
+    for (int i = 0; i < num_of_samples; i++){
+        sum += mpu_read_data();
+        vTaskDelay(pdMS_TO_TICKS(5));
+    };
+
+    double accel_z_bias = sum / num_of_samples; 
+    return accel_z_bias;
 
 }
+
