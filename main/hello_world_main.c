@@ -3,8 +3,9 @@
 #include "freertos/task.h"
 #include "driver/i2c_master.h"
 #include "esp_err.h"
+#include "esp_log.h"
 
-static const *TAG = "MPU6050";
+static const char *TAG = "MPU6050";
 
 #define TEST_I2C_PORT I2C_NUM_0
 #define I2C_MASTER_SCL_IO GPIO_NUM_6
@@ -13,7 +14,7 @@ static const *TAG = "MPU6050";
 #define PWR_MGMT_REG 0x6B //This is the address of the register whose bit 6 have to be turned 0 for turning on mpu6050
 #define ACCEL_XOUT_REG 0x3B
 
-
+static i2c_master_dev_handle_t dev_handle; 
 
 void mpu6050_init(){
     i2c_master_bus_config_t i2c_mst_config = {
@@ -31,10 +32,9 @@ void mpu6050_init(){
     i2c_device_config_t dev_cfg = {
         .dev_addr_length = I2C_ADDR_BIT_LEN_7,
         .device_address = MPU6050_ADDRESS,
-        .scl_speed_hz = 100000,
+        .scl_speed_hz = 100000
     };
 
-    i2c_master_dev_handle_t dev_handle;
     ESP_ERROR_CHECK(i2c_master_bus_add_device(bus_handle, &dev_cfg, &dev_handle));
 
     uint8_t wake_up_cmd[2] = {PWR_MGMT_REG, 0x00};
@@ -45,17 +45,14 @@ void mpu6050_init(){
 void mpu_read_data(){
 
     uint8_t data_reg_addr = ACCEL_XOUT_REG;
-    uint8_t data[6];  //because mpu6050 produces data in big endian format -- MSB first
+    uint8_t data[6];
 
-    ESP_ERROR_CHECK(i2c_master_transmit_receive(dev_handle, data_reg_addr,1 , data, 6, 1000));
-    
+    ESP_ERROR_CHECK(i2c_master_transmit_receive(dev_handle, &data_reg_addr, 1 , data, 6, 1000));
+
+    int16_t accel_x = (int16_t)((data[0] << 8) | (data[1])); //because mpu6050 produces data in big endian format (MSB first)
+    int16_t accel_y = (int16_t)((data[2] << 8) | (data[3]));
+    int16_t accel_z = (int16_t)((data[4] << 8) | (data[5]));
+
+    ESP_LOGI(TAG, "Accel X=%d Y=%d Z=%d", accel_x, accel_y, accel_z);
 
 }
-
-
-
-
-
-
-
-
